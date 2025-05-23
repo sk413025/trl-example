@@ -172,20 +172,18 @@ def run_training(args, train_data, val_data):
         lr_scheduler_type=args.lr_scheduler_type,
         warmup_steps=args.num_warmup_steps,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
-        gradient_checkpointing=args.gradient_checkpointing,
-        fp16=args.fp16,
-        bf16=args.bf16,
+        gradient_checkpointing=False,
+        fp16=False,
+        bf16=False,
         weight_decay=args.weight_decay,
-        run_name="llama-7b-finetuned",
-        report_to="wandb",
+        run_name="qwen2-finetuned",
+        report_to=None,
         ddp_find_unused_parameters=False,
     )
 
     # Use the original model name for loading if model_path doesn't exist
     model_path = args.model_path if args.model_path and os.path.exists(args.model_path) else "Qwen/Qwen2-0.5B-Instruct"
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path, load_in_8bit=True, device_map={"": Accelerator().process_index}
-    )
+    model = AutoModelForCausalLM.from_pretrained(model_path)
 
     trainer = SFTTrainer(
         model=model,
@@ -193,7 +191,6 @@ def run_training(args, train_data, val_data):
         train_dataset=train_data,
         eval_dataset=val_data,
         peft_config=lora_config,
-        packing=True,
     )
 
     print_trainable_parameters(trainer.model)
