@@ -4,9 +4,10 @@ This repository demonstrates fine-tuning techniques for the Qwen2-0.5B-Instruct 
 
 ## Overview
 
-The project provides four main training scripts:
+The project provides five main training scripts:
 - **GRPO Training with LoRA (Agent)**: Advanced agent training with chain-of-thought reasoning and LoRA
-- **GRPO Training with LoRA (Simple)**: Simplified GRPO training with LoRA for text summarization tasks
+- **GRPO Training with LoRA (Simple)**: True GRPO training with LoRA for text summarization tasks
+- **SFT Training with LoRA**: Stable supervised fine-tuning with LoRA (most reliable)
 - **GRPO Training**: Standard Group Relative Policy Optimization for preference-based learning  
 - **Supervised Fine-tuning**: Traditional supervised learning approach with automatic model downloading
 
@@ -73,24 +74,38 @@ python test_grpo_lora.py
 - **Custom Tasks**: Agent action selection and reward evaluation
 - **Memory Efficient**: Only trains LoRA adapters (~1M parameters)
 
-#### Simple Training (Beginner-Friendly)
-The simplified GRPO LoRA script for text summarization and general language tasks.
+#### GRPO Training (True GRPO with LoRA)
+The true GRPO LoRA script that maintains the same training approach as the original grpo-train.py.
 
 **Basic usage**:
 ```bash
 python grpo-lora-train.py
 ```
 
+**Key features**:
+- **True GRPO**: Group Relative Policy Optimization with reward functions
+- **Same Logic**: Maintains original grpo-train.py reward function (unique character counting)
+- **Memory Efficient**: LoRA parameter-efficient fine-tuning
+- **Preference Learning**: Advanced reinforcement learning approach
+
+#### SFT Training (Stable & Beginner-Friendly)
+The most stable LoRA training option using supervised fine-tuning.
+
+**Basic usage**:
+```bash
+python sft-lora-simple.py
+```
+
 **Quick test**:
 ```bash
-python test_grpo_lora_simple.py
+python test_sft_lora_simple.py
 ```
 
 **Key features**:
-- **Simple Setup**: Easy-to-understand training pipeline
+- **Stable Training**: Uses SFTTrainer for reliable results
 - **TLDR Dataset**: Pre-configured for text summarization
 - **Fast Training**: Optimized for quick experimentation
-- **Auto-saving**: LoRA adapters saved automatically
+- **Guaranteed Success**: Most reliable training option
 
 ### Supervised Fine-tuning
 
@@ -141,14 +156,23 @@ python grpo-train.py --model_path ./Qwen2-0.5B-Instruct
 | `TRAIN_DATASET_SAMPLES` | `32` | Number of training samples |
 | `OUTPUT_DIR` | `"./grpo_lora_output"` | Output directory for LoRA adapters |
 
-**Simple Training (grpo-lora-train.py)**
+**GRPO Training (grpo-lora-train.py)**
 | Configuration | Default | Description |
 |---------------|---------|-------------|
 | `BASE_MODEL` | `"Qwen/Qwen2-0.5B-Instruct"` | Base model to fine-tune |
-| `num_train_epochs` | `1` | Single epoch for quick training |
-| `per_device_train_batch_size` | `2` | Small batch size for memory efficiency |
-| `learning_rate` | `5e-4` | Higher LR for LoRA training |
-| `OUTPUT_DIR` | `"./grpo_lora_simple_output"` | Output directory for LoRA adapters |
+| `per_device_train_batch_size` | `1` | Very small batch for GRPO stability |
+| `learning_rate` | `5e-5` | Lower LR for GRPO stability |
+| `num_generations` | `2` | Required minimum for GRPO |
+| `OUTPUT_DIR` | `"./grpo_lora_train_output"` | Output directory for LoRA adapters |
+
+**SFT Training (sft-lora-simple.py)**
+| Configuration | Default | Description |
+|---------------|---------|-------------|
+| `BASE_MODEL` | `"Qwen/Qwen2-0.5B-Instruct"` | Base model to fine-tune |
+| `per_device_train_batch_size` | `1` | Small batch size for memory efficiency |
+| `learning_rate` | `2e-4` | Optimal LR for SFT training |
+| `max_steps` | `20` | Quick training for testing |
+| `OUTPUT_DIR` | `"./lora_simple_output"` | Output directory for LoRA adapters |
 
 #### LoRA Configuration
 | Parameter | Value | Description |
@@ -236,18 +260,21 @@ The training script tracks several metrics:
 trl-example/
 ├── README.md                     # This file
 ├── grpo-lora-agent.py           # GRPO agent training with LoRA (advanced)
-├── grpo-lora-train.py           # GRPO simple training with LoRA (beginner)
+├── grpo-lora-train.py           # True GRPO training with LoRA (intermediate)
+├── sft-lora-simple.py           # SFT training with LoRA (beginner-friendly)
 ├── supervised_finetuning.py      # Supervised fine-tuning script  
 ├── grpo-train.py                # Standard GRPO training script
 ├── test_grpo_lora.py            # Test script for agent LoRA training
-├── test_grpo_lora_simple.py     # Test script for simple LoRA training
+├── test_sft_lora_simple.py      # Test script for SFT LoRA training
 ├── .gitignore                   # Git ignore patterns
 ├── checkpoints/                 # Supervised fine-tuning checkpoints
 │   └── final_checkpoint/        # Final model checkpoint
 ├── grpo_lora_output/            # Agent LoRA training output
 │   └── lora_adapter/            # Saved agent LoRA adapters
-├── grpo_lora_simple_output/     # Simple LoRA training output
-│   └── lora_adapter/            # Saved simple LoRA adapters
+├── grpo_lora_train_output/      # True GRPO LoRA training output
+│   └── lora_adapter/            # Saved GRPO LoRA adapters
+├── lora_simple_output/          # SFT LoRA training output
+│   └── lora_adapter/            # Saved SFT LoRA adapters
 └── qwen2-saved/                # Downloaded model cache (created automatically)
     ├── config.json
     ├── tokenizer.json
@@ -260,7 +287,10 @@ trl-example/
 
 1. **Memory Issues**:
    ```bash
-   # Use simple LoRA training (most memory efficient)
+   # Use SFT LoRA training (most stable and memory efficient)
+   python sft-lora-simple.py
+   
+   # Or GRPO LoRA training
    python grpo-lora-train.py
    
    # Or advanced agent LoRA training
@@ -272,10 +302,12 @@ trl-example/
 
 2. **CUDA Out of Memory**:
    ```bash
-   # Use LoRA training (uses only 0.22% of parameters)
-   python grpo-lora-train.py  # Simple version
+   # Use LoRA training (uses only 0.11% of parameters)
+   python sft-lora-simple.py     # Most stable
    # or
-   python grpo-lora-agent.py  # Agent version
+   python grpo-lora-train.py     # True GRPO
+   # or  
+   python grpo-lora-agent.py     # Agent version
    
    # Or use CPU-only training
    export CUDA_VISIBLE_DEVICES=""
@@ -319,7 +351,7 @@ The script has been optimized to avoid common dependency conflicts:
 
 ### Loading Trained LoRA Adapters
 
-After training with `grpo-lora-agent.py` or `grpo-lora-train.py`, you can load the LoRA adapters:
+After training with any LoRA script, you can load the LoRA adapters:
 
 ```python
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -332,8 +364,10 @@ tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-0.5B-Instruct")
 # Load LoRA adapter (choose the appropriate path)
 # For agent training:
 model = PeftModel.from_pretrained(base_model, "./grpo_lora_output/lora_adapter")
-# For simple training:
-# model = PeftModel.from_pretrained(base_model, "./grpo_lora_simple_output/lora_adapter")
+# For GRPO training:
+# model = PeftModel.from_pretrained(base_model, "./grpo_lora_train_output/lora_adapter")
+# For SFT training:
+# model = PeftModel.from_pretrained(base_model, "./lora_simple_output/lora_adapter")
 
 # Use for inference
 # Agent prompt example:
