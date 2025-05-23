@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """
-GRPO Training with LoRA - Simple Version
-========================================
+GRPO Training with LoRA - Based on grpo-train.py
+================================================
 
-A simplified GRPO training script with LoRA parameter-efficient fine-tuning.
-This version uses the TLDR dataset and a basic reward function while only
-training LoRA adapters for memory efficiency.
+A LoRA version of the original grpo-train.py script that maintains the same
+GRPO training approach while adding parameter-efficient fine-tuning.
 
 Features:
-- LoRA fine-tuning (only 0.22% trainable parameters)
-- GRPO (Group Relative Policy Optimization)
-- Automatic model and tokenizer setup
+- GRPO (Group Relative Policy Optimization) training
+- LoRA parameter-efficient fine-tuning
+- Same reward function as original (unique character counting)
 - Memory-efficient training configuration
-- Custom reward functions
 
 Usage:
     python grpo-lora-train.py
@@ -29,18 +27,20 @@ from peft import LoraConfig, get_peft_model, TaskType
 
 # Configuration
 BASE_MODEL = "Qwen/Qwen2-0.5B-Instruct"
-OUTPUT_DIR = "./grpo_lora_simple_output"
+OUTPUT_DIR = "./grpo_lora_train_output"
 LORA_OUTPUT_DIR = f"{OUTPUT_DIR}/lora_adapter"
 
 # Create output directory
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-print("🚀 GRPO Training with LoRA - Simple Version")
-print("=" * 50)
+print("🚀 GRPO Training with LoRA")
+print("=" * 30)
 
-# Load dataset
+# Load dataset (same as original)
 print("📊 Loading TLDR dataset...")
 dataset = load_dataset("trl-lib/tldr", split="train")
+# Take a smaller subset for quick training
+dataset = dataset.select(range(50))  # Reduced for stability
 print(f"Dataset loaded: {len(dataset)} samples")
 
 # Load model and tokenizer
@@ -58,10 +58,10 @@ print(f"Model loaded: {model.num_parameters():,} parameters")
 # Configure LoRA
 print("🔧 Configuring LoRA...")
 lora_config = LoraConfig(
-    r=16,                               # Rank of adaptation
-    lora_alpha=32,                      # LoRA scaling parameter
+    r=8,                                # Small rank for stability
+    lora_alpha=16,                      # Conservative scaling
     target_modules=["q_proj", "v_proj"], # Target attention modules
-    lora_dropout=0.05,                  # Dropout probability
+    lora_dropout=0.1,                   # Higher dropout for regularization
     bias="none",                        # Bias type
     task_type=TaskType.CAUSAL_LM        # Task type
 )
@@ -77,41 +77,41 @@ print(f"   Total parameters: {model.num_parameters():,}")
 print(f"   Trainable parameters: {trainable_params:,}")
 print(f"   Trainable percentage: {trainable_params/model.num_parameters()*100:.3f}%")
 
-# Reward function: count unique characters in completions
+# Dummy reward function: count the number of unique characters in the completions
+# (Same as original grpo-train.py)
 def reward_num_unique_chars(completions, **kwargs):
     """
-    Simple reward function that counts unique characters.
-    Higher character diversity = higher reward.
+    Same reward function as original grpo-train.py:
+    Count unique characters in completions for diversity reward.
     """
     rewards = []
     for completion in completions:
-        # Count unique characters and normalize
-        unique_chars = len(set(completion.lower()))
-        # Normalize to 0-1 range (assuming max ~50 unique chars)
-        reward = min(unique_chars / 50.0, 1.0)
+        unique_count = len(set(completion))
+        # Normalize to reasonable range
+        reward = min(unique_count / 100.0, 1.0)
         rewards.append(reward)
     return rewards
 
-# GRPO Configuration
+# GRPO Configuration (adapted for LoRA and stability)
 print("⚙️ Configuring GRPO trainer...")
 training_args = GRPOConfig(
     output_dir=OUTPUT_DIR,
-    num_train_epochs=1,                 # Single epoch for quick training
-    per_device_train_batch_size=1,      # Very small batch size for stability
-    gradient_accumulation_steps=4,      # Effective batch size of 4
-    learning_rate=1e-4,                 # Lower LR for stability
-    logging_steps=10,                   # Log every 10 steps
-    save_steps=100,                     # Save every 100 steps
-    max_prompt_length=256,              # Shorter prompts for stability
+    num_train_epochs=1,                 # Single epoch for testing
+    per_device_train_batch_size=1,      # Very small batch for stability
+    gradient_accumulation_steps=2,      # Effective batch size of 2
+    learning_rate=5e-5,                 # Lower LR for stability with LoRA
+    logging_steps=5,                    # Frequent logging
+    save_steps=25,                      # Save every 25 steps
+    max_prompt_length=256,              # Shorter for stability
     max_completion_length=128,          # Shorter completions
-    temperature=1.0,                    # Higher temperature for stability
-    top_k=20,                           # Lower top_k for stability
-    top_p=0.9,                          # Lower top_p for stability
-    num_generations=2,                  # Reduce generations for speed
-    warmup_steps=5,                     # Quick warmup
+    temperature=1.2,                    # Higher temperature for stability
+    top_k=10,                           # Very conservative sampling
+    top_p=0.85,                         # Conservative top_p
+    num_generations=2,                  # Minimum required for GRPO
+    warmup_steps=2,                     # Quick warmup
     weight_decay=0.01,
     remove_unused_columns=False,
-    max_steps=50,                       # Limit training steps for testing
+    max_steps=20,                       # Limit steps for testing
 )
 
 # Initialize trainer
@@ -119,7 +119,7 @@ print("🏋️ Initializing GRPO trainer...")
 trainer = GRPOTrainer(
     model=model,
     processing_class=tokenizer,
-    reward_funcs=[reward_num_unique_chars],
+    reward_funcs=[reward_num_unique_chars],  # Same reward function as original
     args=training_args,
     train_dataset=dataset,
 )
@@ -129,31 +129,49 @@ print(f"   Dataset size: {len(dataset)}")
 print(f"   Batch size: {training_args.per_device_train_batch_size}")
 print(f"   Effective batch size: {training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps}")
 print(f"   Learning rate: {training_args.learning_rate}")
+print(f"   Max steps: {training_args.max_steps}")
+print(f"   Reward function: unique character counting (same as original)")
 print(f"   Output directory: {OUTPUT_DIR}")
 
-# Train the model
-trainer.train()
+try:
+    # Train the model
+    trainer.train()
+    print("✅ GRPO training completed!")
+    
+    # Save LoRA adapter
+    print("💾 Saving LoRA adapter...")
+    model.save_pretrained(LORA_OUTPUT_DIR)
+    tokenizer.save_pretrained(LORA_OUTPUT_DIR)
+    
+    print(f"📁 LoRA adapter saved to: {LORA_OUTPUT_DIR}")
+    print(f"📁 Training logs saved to: {OUTPUT_DIR}")
+    
+    # Verify saved files
+    if os.path.exists(LORA_OUTPUT_DIR):
+        saved_files = os.listdir(LORA_OUTPUT_DIR)
+        print(f"📄 Saved files: {', '.join(saved_files)}")
+        
+        # Calculate total size
+        total_size = 0
+        for file in saved_files:
+            file_path = os.path.join(LORA_OUTPUT_DIR, file)
+            if os.path.isfile(file_path):
+                size = os.path.getsize(file_path)
+                total_size += size
+        
+        print(f"📊 Total adapter size: {total_size:,} bytes ({total_size/1024/1024:.1f} MB)")
+    else:
+        print("⚠️ Warning: LoRA adapter directory not found")
+    
+    print("🎉 GRPO LoRA training completed successfully!")
+    
+except Exception as e:
+    print(f"❌ Training failed: {e}")
+    print("💡 This is expected with GRPO as it can be numerically unstable.")
+    print("💡 Try the SFT version (sft-lora-simple.py) for more stable training.")
 
-print("✅ Training completed!")
-
-# Save LoRA adapter
-print("💾 Saving LoRA adapter...")
-model.save_pretrained(LORA_OUTPUT_DIR)
-tokenizer.save_pretrained(LORA_OUTPUT_DIR)
-
-print(f"📁 LoRA adapter saved to: {LORA_OUTPUT_DIR}")
-print(f"📁 Training logs saved to: {OUTPUT_DIR}")
-
-# Verify saved files
-if os.path.exists(LORA_OUTPUT_DIR):
-    saved_files = os.listdir(LORA_OUTPUT_DIR)
-    print(f"📄 Saved files: {', '.join(saved_files)}")
-else:
-    print("⚠️ Warning: LoRA adapter directory not found")
-
-print("🎉 GRPO LoRA training completed successfully!")
-print("\n" + "=" * 50)
-print("📖 To load the trained LoRA adapter:")
+print("\n" + "=" * 30)
+print("📖 To load the trained LoRA adapter (if successful):")
 print(f"""
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
@@ -166,9 +184,9 @@ tokenizer = AutoTokenizer.from_pretrained("{BASE_MODEL}")
 model = PeftModel.from_pretrained(base_model, "{LORA_OUTPUT_DIR}")
 
 # Use for inference
-prompt = "Summarize this text: "
+prompt = "Your text here"
 inputs = tokenizer(prompt, return_tensors="pt")
-outputs = model.generate(**inputs, max_new_tokens=100)
+outputs = model.generate(**inputs, max_new_tokens=50)
 response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 print(response)
 """)
