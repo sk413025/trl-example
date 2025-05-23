@@ -58,7 +58,7 @@ The GRPO with LoRA script provides memory-efficient training using parameter-eff
 
 **Basic usage**:
 ```bash
-python grpo-agent.py
+python grpo-lora-agent.py
 ```
 
 **Quick test**:
@@ -110,7 +110,7 @@ python grpo-train.py --model_path ./Qwen2-0.5B-Instruct
 
 ### Command Line Arguments
 
-#### GRPO with LoRA Options (grpo-agent.py)
+#### GRPO with LoRA Options (grpo-lora-agent.py)
 | Configuration | Default | Description |
 |---------------|---------|-------------|
 | `BASE_MODEL` | `"Qwen/Qwen2-0.5B-Instruct"` | Base model to fine-tune |
@@ -205,7 +205,7 @@ The training script tracks several metrics:
 ```
 trl-example/
 ├── README.md                    # This file
-├── grpo-agent.py               # GRPO training with LoRA (recommended)
+├── grpo-lora-agent.py          # GRPO training with LoRA (recommended)
 ├── supervised_finetuning.py     # Supervised fine-tuning script  
 ├── grpo-train.py               # Standard GRPO training script
 ├── test_grpo_lora.py           # Test script for LoRA training
@@ -227,7 +227,7 @@ trl-example/
 1. **Memory Issues**:
    ```bash
    # Use LoRA training for memory efficiency (recommended)
-   python grpo-agent.py
+   python grpo-lora-agent.py
    
    # Or reduce batch size for supervised fine-tuning
    python supervised_finetuning.py --batch_size 1 --seq_length 512
@@ -236,7 +236,7 @@ trl-example/
 2. **CUDA Out of Memory**:
    ```bash
    # Use LoRA training (uses only 0.22% of parameters)
-   python grpo-agent.py
+   python grpo-lora-agent.py
    
    # Or use CPU-only training
    export CUDA_VISIBLE_DEVICES=""
@@ -280,7 +280,7 @@ The script has been optimized to avoid common dependency conflicts:
 
 ### Loading Trained LoRA Adapters
 
-After training with `grpo-agent.py`, you can load the LoRA adapters:
+After training with `grpo-lora-agent.py`, you can load the LoRA adapters:
 
 ```python
 from transformers import AutoTokenizer, AutoModelForCausalLM

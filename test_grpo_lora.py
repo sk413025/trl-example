@@ -16,7 +16,7 @@ def main():
     print("=" * 50)
     
     # Check if the script exists
-    script_path = "grpo-agent.py"
+    script_path = "grpo-lora-agent.py"
     if not os.path.exists(script_path):
         print(f"❌ Error: {script_path} not found!")
         return 1
