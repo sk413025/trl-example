@@ -3,3 +3,11 @@ qwen2-saved/
 checkpoints/
 grpo_lora_output/
 grpo_lora_train_output/
+Spark-TTS-0.5B/
+
+*.wav
+*.pyc
+__pycache__/
+
+spark_tts_conservative_output/
+spark_tts_lora_output/
